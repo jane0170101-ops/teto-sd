@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SD 테토의 바게트 캐치! 🥖</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            /* 테토 느낌의 연한 빨간색 배경 */
+            background-color: #ffcccc; 
+            font-family: 'Malgun Gothic', sans-serif;
+            overflow: hidden;
+        }
+        canvas {
+            background-color: #fff0f0; 
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            border: 5px solid #ff6666;
+            border-radius: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="gameCanvas" width="400" height="600"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // SD 테토(플레이어) 설정
+    const teto = {
+        x: canvas.width / 2 - 30,
+        y: canvas.height - 80, // 약간 더 키웠음
+        width: 60,
+        height: 70, // 비율 조정
+        speed: 8, // SD니까 약간 더 빠르게
+        dx: 0
+    };
+
+    // 게임 상태 변수
+    let baguettes = [];
+    let score = 0;
+    let isGameOver = false;
+    
+    // 폭우(바게트 획득) 이벤트 변수
+    let spawnRate = 0.06; // 기본 바게트 생성 확률
+    let fallSpeed = 5;    // 기본 떨어지는 속도
+    let eventTriggered = false; // 2000점 이벤트 발동 여부
+    let isHeavyEventActive = false;  // 현재 폭우 상태인지 여부
+
+    // 키보드 이벤트 처리 (좌우 이동)
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft' || e.key === 'a') teto.dx = -teto.speed;
+        if (e.key === 'ArrowRight' || e.key === 'd') teto.dx = teto.speed;
+    });
+
+    document.addEventListener('keyup', (e) => {
+        if (
+            e.key === 'ArrowLeft' || e.key === 'a' ||
+            e.key === 'ArrowRight' || e.key === 'd'
+        ) {
+            teto.dx = 0;
+        }
+    });
+
+    // 바게트 생성 함수
+    function createBaguette() {
+        if (Math.random() < spawnRate) {
+            baguettes.push({
+                x: Math.random() * (canvas.width - 30),
+                y: -30,
+                width: 28, // 이모지 크기에 맞게 조정
+                height: 28,
+                speed: fallSpeed + Math.random() * 2 
+            });
+        }
+        // 이벤트 발동 시 바게트 대량 생성
+        if (isHeavyEventActive && Math.random() < 0.6) {
+            baguettes.push({
+                x: Math.random() * (canvas.width - 30),
+                y: -30,
+                width: 28,
+                height: 28,
+                speed: fallSpeed + Math.random() * 4
+            });
+        }
+    }
+
+    // 드릴(소라빵) 머리 그리기 함수 (SD 스타일에 맞춰 더 단순화)
+    function drawDrill(x, y, isLeft) {
+        ctx.fillStyle = '#cc3344'; // 테토 머리색
+        let direction = isLeft ? -1 : 1;
+        
+        // 소라빵 2단 층으로 더 단순하고 귀엽게
+        ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI*2); ctx.fill(); // 위 (크게)
+        ctx.beginPath(); ctx.arc(x + (6 * direction), y + 15, 8, 0, Math.PI*2); ctx.fill(); // 끝 (작게)
+    }
+
+    // SD 테토 그리기
+    function drawTeto() {
+        const cx = teto.x + teto.width / 2;
+        const ty = teto.y;
+
+        // 1. 바보털 (Ahoge)
+        ctx.beginPath();
+        ctx.strokeStyle = '#cc3344';
+        ctx.lineWidth = 3;
+        ctx.moveTo(cx, ty + 10);
+        ctx.quadraticCurveTo(cx - 12, ty - 12, cx - 4, ty - 4);
+        ctx.stroke();
+
+        // 2. 드릴(소라빵) 머리 양갈래
+        drawDrill(cx - 18, ty + 20, true);  // 왼쪽 드릴
+        drawDrill(cx + 18, ty + 20, false); // 오른쪽 드릴
+
+        // 3. SD용 새로운 옷 (귀여운 학교 조끼 스타일)
+        // 조끼 (회색)
+        ctx.fillStyle = '#b3b3b3';
+        ctx.fillRect(cx - 14, ty + 32, 28, 28);
+        // 치마 (체크무늬 느낌의 빨간색 사각형)
+        ctx.fillStyle = '#aa0000';
+        ctx.fillRect(cx - 16, ty + 56, 32, 14);
+
+        // 4. 얼굴
+        ctx.fillStyle = '#ffe0d2'; // 살구색
+        ctx.beginPath();
+        ctx.arc(cx, ty + 18, 16, 0, Math.PI*2); // 얼굴 약간 크게
+        ctx.fill();
+
+        // 5. 앞머리
+        ctx.fillStyle = '#cc3344';
+        ctx.beginPath();
+        ctx.arc(cx, ty + 16, 17, Math.PI, 0); // 반원 형태의 앞머리
+        ctx.fill();
+
+        // 6. 눈 (SD 스타일에 맞춰 더 크고 귀엽게)
+        ctx.fillStyle = '#cc3344';
+        ctx.beginPath(); ctx.arc(cx - 6, ty + 20, 3, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + 6, ty + 20, 3, 0, Math.PI*2); ctx.fill();
+    }
+
+    // 화면 그리기
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 바게트 그리기 (크기 확대)
+        ctx.font = '28px Arial';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        baguettes.forEach(bg => {
+            ctx.fillText('🥖', bg.x, bg.y);
+        });
+
+        // 테토 그리기 호출
+        drawTeto();
+
+        // 점수 그리기
+        ctx.fillStyle = '#333';
+        ctx.font = 'bold 22px Arial';
+        ctx.fillText(`SCORE: ${score}`, 10, 10);
+
+        // 바게트 폭우 알림 텍스트
+        if (isHeavyEventActive) {
+            ctx.fillStyle = 'red';
+            ctx.font = 'bold 26px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🥖 SD 테토의 바게트 타임! 🥖', canvas.width / 2, 80);
+        }
+    }
+
+    // 게임 로직 업데이트
+    function update() {
+        if (isGameOver) return;
+
+        // 테토 이동 및 벽 충돌 방지
+        teto.x += teto.dx;
+        if (teto.x < 0) teto.x = 0;
+        if (teto.x + teto.width > canvas.width) teto.x = canvas.width - teto.width;
+
+        // 2000점 바게트 폭우 이벤트 체크
+        if (score >= 2000 && !eventTriggered) {
+            eventTriggered = true;
+            isHeavyEventActive = true;
+            spawnRate = 0.4; // 생성 확률 대폭 증가
+            fallSpeed = 9;   // 속도 증가 (SD니까 더 빠르게!)
+
+            // 5초(5000ms) 뒤에 원래대로 복구
+            setTimeout(() => {
+                isHeavyEventActive = false;
+                spawnRate = 0.06;
+                fallSpeed = 5;
+            }, 5000);
+        }
+
+        createBaguette();
+
+        // 바게트 이동 및 충돌(획득) 처리
+        for (let i = 0; i < baguettes.length; i++) {
+            let bg = baguettes[i];
+            bg.y += bg.speed;
+
+            // 바게트를 획득했을 때 (테토의 몸통과 충돌 체크)
+            if (
+                bg.x < teto.x + teto.width &&
+                bg.x + bg.width > teto.x &&
+                bg.y < teto.y + teto.height &&
+                bg.y + bg.height > teto.y
+            ) {
+                score += 100; // 바게트 하나당 100점
+                baguettes.splice(i, 1);
+                i--;
+                continue;
+            }
+
+            // 바닥에 닿으면 그냥 사라짐
+            if (bg.y > canvas.height) {
+                baguettes.splice(i, 1);
+                i--;
+            }
+        }
+
+        draw();
+        requestAnimationFrame(update);
+    }
+
+    // 게임 시작
+    update();
+</script>
+
+</body>
+</html>
